@@ -1,26 +1,19 @@
-/**
- * Store Pinia para gerenciamento de estado de Clientes.
- */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../api/index.js'
-import { clienteApi } from '../api/clientes'
+import { clienteApi } from '../api/clientes.js'
 
 export const useClientesStore = defineStore('clientes', () => {
-  // State
+  // Estado
   const clientes = ref([])
   const clienteAtual = ref(null)
   const loading = ref(false)
   const erro = ref(null)
 
-  // Getters
-  const totalClientes = computed(() => clientes.value.length)
-  const clientesComCachorros = computed(() => 
-    clientes.value.map(c => ({
-      ...c,
-      totalCachorros: c.cachorros?.length || 0
-    }))
-  )
+  // Helper
+  function getErrorMessage(err, fallback) {
+    return err.response?.data?.detail || err.response?.data?.message || fallback
+  }
 
   // Actions
   async function fetchClientes(params = {}) {
@@ -30,22 +23,20 @@ export const useClientesStore = defineStore('clientes', () => {
       const response = await clienteApi.listar(params)
       clientes.value = response.data
     } catch (err) {
-      erro.value = err.response?.data?.detail || 'Erro ao carregar clientes'
-      console.error('Clientes fetch error:', err)
+      erro.value = getErrorMessage(err, 'Erro ao buscar clientes')
     } finally {
       loading.value = false
     }
   }
 
   async function fetchCliente(id) {
+    erro.value = null
     loading.value = true
     try {
       const response = await clienteApi.obter(id)
       clienteAtual.value = response.data
-      return response.data
     } catch (err) {
-      erro.value = err.response?.data?.detail || 'Erro ao carregar cliente'
-      console.error('Cliente fetch error:', err)
+      erro.value = getErrorMessage(err, 'Erro ao buscar cliente')
     } finally {
       loading.value = false
     }
@@ -57,7 +48,8 @@ export const useClientesStore = defineStore('clientes', () => {
       clientes.value.unshift(response.data)
       return response.data
     } catch (err) {
-      throw err.response?.data?.detail || 'Erro ao criar cliente'
+      erro.value = getErrorMessage(err, 'Erro ao criar cliente')
+      throw err
     }
   }
 
@@ -73,7 +65,8 @@ export const useClientesStore = defineStore('clientes', () => {
       }
       return response.data
     } catch (err) {
-      throw err.response?.data?.detail || 'Erro ao atualizar cliente'
+      erro.value = getErrorMessage(err, 'Erro ao atualizar cliente')
+      throw err
     }
   }
 
@@ -85,35 +78,79 @@ export const useClientesStore = defineStore('clientes', () => {
         clienteAtual.value = null
       }
     } catch (err) {
-      throw err.response?.data?.detail || 'Erro ao deletar cliente'
+      erro.value = getErrorMessage(err, 'Erro ao deletar cliente')
+      throw err
     }
   }
 
-  // Nova ação: adicionar cachorro e refresh cliente específico
   async function adicionarCachorro(clienteId, data) {
     try {
-      await api.post('/cachorros/', data)
-      // Refresh lista completa (backend agora inclui cachorros)
+      await clienteApi.criarCachorro(clienteId, data)
       await fetchClientes()
+      if (clienteAtual.value?.id === clienteId) {
+        await fetchCliente(clienteId)
+      }
       return true
     } catch (err) {
-      throw err.response?.data?.detail || 'Erro ao adicionar cachorro'
+      erro.value = getErrorMessage(err, 'Erro ao adicionar cachorro')
+      throw err
     }
   }
 
+  async function atualizarCachorro(clienteId, cachorroId, data) {
+    try {
+      await clienteApi.atualizarCachorro(clienteId, cachorroId, data)
+      // Refresh lists
+      await fetchClientes()
+      if (clienteAtual.value?.id === clienteId) {
+        await fetchCliente(clienteId)
+      }
+      return true
+    } catch (err) {
+      erro.value = getErrorMessage(err, 'Erro ao atualizar pet')
+      throw err
+    }
+  }
+
+  async function deletarCachorro(clienteId, cachorroId) {
+    try {
+      await clienteApi.deletarCachorro(clienteId, cachorroId)
+      await fetchClientes()
+      if (clienteAtual.value?.id === clienteId) {
+        await fetchCliente(clienteId)
+      }
+    } catch (err) {
+      erro.value = getErrorMessage(err, 'Erro ao deletar pet')
+      throw err
+    }
+  }
+
+  // Getters
+  const totalClientes = computed(() => clientes.value.length)
+  const clientesComCachorros = computed(() => clientes.value.filter(cliente => cliente.cachorros && cliente.cachorros.length > 0))
+  const clientesComTotalCachorros = computed(() => clientes.value.map(cliente => ({
+    ...cliente,
+    totalCachorros: cliente.cachorros ? cliente.cachorros.length : 0
+  })))
+
+  // Retorno
   return {
     clientes,
     clienteAtual,
     loading,
     erro,
-    totalClientes,
-    clientesComCachorros,
     fetchClientes,
     fetchCliente,
     criarCliente,
     atualizarCliente,
     deletarCliente,
-    adicionarCachorro
+    adicionarCachorro,
+    atualizarCachorro,
+    deletarCachorro,
+    totalClientes,
+    clientesComCachorros,
+    clientesComTotalCachorros,
+    getErrorMessage
   }
 })
 

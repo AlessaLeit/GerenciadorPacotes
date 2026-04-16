@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <nav class="navbar">
-      <div class="nav-brand">🐾 Banho & Tosa</div>
+      <div class="nav-brand">Canil Recanto Mini Dogs</div>
       <ul class="nav-links">
         <li><router-link to="/">Dashboard</router-link></li>
         <li><router-link to="/pacotes">Pacotes</router-link></li>
@@ -34,7 +34,7 @@ body {
 }
 
 .navbar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #4961ce;
   color: white;
   padding: 1rem 2rem;
   display: flex;

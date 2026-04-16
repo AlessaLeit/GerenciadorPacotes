@@ -33,22 +33,7 @@
         <h2>📅 Calendário de Banhos</h2>
         <CalendarioMes :banhos="agendamentosStore.agendamentosDashboard" @data-selecionada="onDataSelecionada" />
       </div>
-      
-      <div class="card">
-        <h2>🛁 Últimos Banhos</h2>
-        <div v-if="banhosRecentes.length === 0" class="empty-state">
-          Nenhum banho registrado recentemente
-        </div>
-        <BanhoItem 
-          v-for="banho in banhosRecentes" 
-          :key="banho.id"
-          :banho="banho"
-          show-pacote
-        />
-      </div>
-    </div>
-    
-    <!-- Agendamentos do Dia -->
+          <!-- Agendamentos do Dia -->
     <div class="card">
       <div class="card-header flex space-between">
         <h2>📋 Agendamentos - {{ formatarData(dataSelecionada) }}</h2>
@@ -76,14 +61,28 @@
         </div>
       </div>
     </div>
-    
+    </div>
+
+      <div class="card">
+        <h2>🛁 Últimos Banhos</h2>
+        <div v-if="banhosRecentes.length === 0" class="empty-state">
+          Nenhum banho registrado recentemente
+        </div>
+        <BanhoItem 
+          v-for="banho in banhosRecentes" 
+          :key="banho.id"
+          :banho="banho"
+          show-pacote
+        />
+      </div>
+
     <div class="card">
       <h2>📦 Pacotes em Aberto</h2>
       <div v-if="pacotesEmAberto.length === 0" class="empty-state">
         Nenhum pacote em aberto
       </div>
       <div class="grid grid-3" v-else>
-        <PacoteCard 
+        <PacoteCad 
           v-for="pacote in pacotesEmAberto.slice(0, 6)" 
           :key="pacote.id"
           :pacote="pacote"
@@ -129,7 +128,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useClientesStore } from '../stores/clientes'
 import { usePacotesStore } from '../stores/pacotes'
-import PacoteCard from '../components/PacoteCard.vue'
+import PacoteCad from '../components/PacoteCad.vue'
 import BanhoItem from '../components/BanhoItem.vue'
 import CalendarioMes from '../components/CalendarioMes.vue'
 import PagamentoForm from '../components/PagamentoForm.vue'

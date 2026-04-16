@@ -1,12 +1,13 @@
 <template>
   <div class="clientes-view">
+    <br>
     <div class="header-actions">
       <h1>Clientes e Pets</h1>
       <button @click="showNovoCliente = true" class="btn btn-primary">
         + Novo Cliente
       </button>
     </div>
-    
+    <br>
     <div class="card">
       <input 
         v-model="busca" 
@@ -38,8 +39,10 @@
             <div class="dog-header">
               <span class="dog-nome">{{ dog.nome }}</span>
               <span class="dog-info">{{ dog.raca }} • {{ dog.porte }}</span>
-              <div class="dog-actions">
+<div class="dog-actions">
                 <button @click="verPacotesCachorro(dog)" class="btn btn-sm btn-pacotes" title="Ver Pacotes">📦 Pacotes</button>
+                <button @click="editarCachorro(dog)" class="btn btn-sm" title="Editar Pet">✏️ Editar</button>
+                <button @click="confirmarDeleteCachorro(dog)" class="btn btn-danger btn-sm" title="Deletar Pet">🗑️</button>
               </div>
             </div>
             <span v-if="dog.observacoes" class="dog-obs">{{ dog.observacoes }}</span>
@@ -110,6 +113,40 @@
         </form>
       </div>
     </div>
+
+    <!-- Modal Editar Cachorro -->
+    <div class="modal" v-if="showEditCachorro">
+      <div class="modal-overlay" @click="showEditCachorro = false"></div>
+      <div class="modal-content">
+        <h3>Editar Pet - {{ cachorroEditando?.nome }} ({{ clienteAtual?.nome }})</h3>
+        <form @submit.prevent="salvarCachorroEdit">
+          <div class="form-group">
+            <label>Nome *</label>
+            <input v-model="formCachorroEdit.nome" required />
+          </div>
+          <div class="form-group">
+            <label>Raça</label>
+            <input v-model="formCachorroEdit.raca" />
+          </div>
+          <div class="form-group">
+            <label>Porte *</label>
+            <select v-model="formCachorroEdit.porte" required>
+              <option value="pequeno">Pequeno</option>
+              <option value="medio">Médio</option>
+              <option value="grande">Grande</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Observações</label>
+            <textarea v-model="formCachorroEdit.observacoes" rows="3"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="button" @click="showEditCachorro = false" class="btn">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Atualizar</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -129,6 +166,9 @@ const clienteAtual = ref(null)
 
 const formCliente = ref({ nome: '', telefone: '', endereco: '' })
 const formCachorro = ref({ nome: '', raca: '', porte: 'medio', observacoes: '', cliente_id: null })
+const showEditCachorro = ref(false)
+const cachorroEditando = ref(null)
+const formCachorroEdit = ref({ nome: '', raca: '', porte: 'medio', observacoes: '' })
 
 const clientesFiltrados = computed(() => {
   if (!busca.value) return clientesStore.clientes
@@ -178,6 +218,35 @@ async function salvarCachorro() {
     alert('Pet adicionado com sucesso!')
   } catch (err) {
     alert('Erro ao adicionar pet: ' + err)
+  }
+}
+
+function editarCachorro(dog) {
+  const cliente = clientesFiltrados.value.find(c => c.cachorros.some(d => d.id === dog.id))
+  clienteAtual.value = cliente
+  cachorroEditando.value = dog
+  formCachorroEdit.value = { ...dog }
+  showEditCachorro.value = true
+}
+
+async function salvarCachorroEdit() {
+  try {
+    await clientesStore.atualizarCachorro(clienteAtual.value.id, cachorroEditando.value.id, formCachorroEdit.value)
+    showEditCachorro.value = false
+    alert('Pet atualizado com sucesso!')
+  } catch (err) {
+    alert('Erro ao atualizar pet: ' + err)
+  }
+}
+
+async function confirmarDeleteCachorro(dog) {
+  if (!confirm(`Tem certeza que deseja excluir o pet "${dog.nome}"?`)) return
+  try {
+    const cliente = clientesFiltrados.value.find(c => c.cachorros.some(d => d.id === dog.id))
+    await clientesStore.deletarCachorro(cliente.id, dog.id)
+    alert('Pet excluído com sucesso!')
+  } catch (err) {
+    alert('Erro ao excluir pet: ' + err)
   }
 }
 

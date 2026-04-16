@@ -26,7 +26,7 @@
     </div>
     
     <div class="grid grid-3">
-      <PacoteCard 
+      <PacoteCad 
         v-for="pacote in pacotesFiltrados" 
         :key="pacote.id"
         :pacote="pacote"
@@ -92,7 +92,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePacotesStore } from '../stores/pacotes'
 import { useClientesStore } from '../stores/clientes'
-import PacoteCard from '../components/PacoteCard.vue'
+import PacoteCad from '../components/PacoteCad.vue'
 import PagamentoForm from '../components/PagamentoForm.vue'
 
 const route = useRoute()
@@ -181,12 +181,17 @@ function verDetalhes(pacote) {
 }
 
 onMounted(async () => {
-  if (cachorroId.value) {
-    await pacotesStore.fetchPacotes({ cachorro_id: cachorroId.value, incluir_inativos: true })
-  } else {
-    await pacotesStore.fetchPacotes({ incluir_inativos: true })
+  try {
+    if (cachorroId.value) {
+      novoPacote.value.cachorro_id = cachorroId.value
+      await pacotesStore.fetchPacotes({ cachorro_id: cachorroId.value, incluir_inativos: true })
+    } else {
+      await pacotesStore.fetchPacotes({ incluir_inativos: true })
+    }
+    await clientesStore.fetchClientes()
+  } catch (err) {
+    console.error("Erro ao inicializar dados:", err)
   }
-  await clientesStore.fetchClientes()
 })
 </script>
 
@@ -308,4 +313,3 @@ onMounted(async () => {
   transform: translateY(-1px);
 }
 </style>
-

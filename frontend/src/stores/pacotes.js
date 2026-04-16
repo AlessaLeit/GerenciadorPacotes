@@ -1,21 +1,33 @@
-/**
- * Store Pinia para gerenciamento de estado de Pacotes.
- */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import pacoteApi from '../api/pacotes.js'
 
 export const usePacotesStore = defineStore('pacotes', () => {
+  // Helper para mensagens de erro
+  function getErrorMessage(err, fallback) {
+    return err.response?.data?.detail || err.response?.data?.message || fallback
+  }
+
+  // State
   const pacotes = ref([])
   const pacoteAtual = ref(null)
   const loading = ref(false)
   const erro = ref(null)
 
+  // Getters/Computed
   const totalPacotes = computed(() => pacotes.value.length)
   const pacotesAtivos = computed(() => pacotes.value.filter(p => p.ativo))
   const pacotesAbertos = computed(() => pacotes.value.filter(p => p.status_pagamento === 'em_aberto'))
-  const totalReceitaPrevista = computed(() => pacotes.value.reduce((sum, p) => sum + (p.valor * p.limite_banhos_mes), 0))
+  const totalReceitaPrevista = computed(() => {
+    const mapaTipo = { semanal: 4, quinzenal: 2, mensal: 1 }
+    return pacotes.value.reduce((total, p) => {
+      const valor = Number(p.valor_cobrado ?? p.valor ?? 0)
+      const quantidade = Number(p.limite_banhos_mes ?? mapaTipo[p.tipo_plano] ?? 0)
+      return total + (valor * quantidade)
+    }, 0)
+  })
 
+  // Actions
   async function fetchPacotes(params = {}) {
     loading.value = true
     erro.value = null
@@ -23,8 +35,8 @@ export const usePacotesStore = defineStore('pacotes', () => {
       const response = await pacoteApi.listar(params)
       pacotes.value = response.data
     } catch (err) {
-      erro.value = err.response?.data?.detail || 'Erro ao carregar pacotes'
-      console.error(erro.value)
+      erro.value = getErrorMessage(err, 'Erro ao buscar pacotes')
+      console.error('Erro ao buscar pacotes:', err)
     } finally {
       loading.value = false
     }
@@ -32,6 +44,7 @@ export const usePacotesStore = defineStore('pacotes', () => {
 
   async function fetchPacote(id) {
     loading.value = true
+    erro.value = null
     try {
       const response = await pacoteApi.obter(id)
       pacoteAtual.value = response.data
@@ -39,11 +52,13 @@ export const usePacotesStore = defineStore('pacotes', () => {
         const agsResp = await pacoteApi.listarAgendamentos(id)
         pacoteAtual.value.agendamentos = agsResp.data
         pacoteAtual.value.total_agendamentos = agsResp.data.length
+      } else if (pacoteAtual.value.agendamentos && !pacoteAtual.value.total_agendamentos) {
+        pacoteAtual.value.total_agendamentos = pacoteAtual.value.agendamentos.length
       }
       return response.data
     } catch (err) {
-      erro.value = err.response?.data?.detail || 'Erro ao carregar pacote'
-      console.error(erro.value)
+      erro.value = getErrorMessage(err, 'Erro ao buscar pacote')
+      console.error('Erro ao buscar pacote:', err)
     } finally {
       loading.value = false
     }
@@ -55,7 +70,7 @@ export const usePacotesStore = defineStore('pacotes', () => {
       pacotes.value.unshift(response.data)
       return response.data
     } catch (err) {
-      console.error(err.response?.data?.detail || 'Erro ao criar pacote')
+      erro.value = getErrorMessage(err, 'Erro ao criar pacote')
       throw err
     }
   }
@@ -67,9 +82,12 @@ export const usePacotesStore = defineStore('pacotes', () => {
       if (index !== -1) {
         pacotes.value[index] = response.data
       }
+      if (pacoteAtual.value?.id === id) {
+        pacoteAtual.value = response.data
+      }
       return response.data
     } catch (err) {
-      console.error(err.response?.data?.detail || 'Erro ao atualizar pacote')
+      erro.value = getErrorMessage(err, 'Erro ao atualizar pacote')
       throw err
     }
   }
@@ -78,8 +96,11 @@ export const usePacotesStore = defineStore('pacotes', () => {
     try {
       await pacoteApi.deletar(id)
       pacotes.value = pacotes.value.filter(p => p.id !== id)
+      if (pacoteAtual.value?.id === id) {
+        pacoteAtual.value = null
+      }
     } catch (err) {
-      console.error(err.response?.data?.detail || 'Erro ao deletar pacote')
+      erro.value = getErrorMessage(err, 'Erro ao deletar pacote')
       throw err
     }
   }
@@ -88,8 +109,11 @@ export const usePacotesStore = defineStore('pacotes', () => {
     try {
       await pacoteApi.registrarPagamento(id, valor_pago, data_pagamento)
       await fetchPacotes()
+      if (pacoteAtual.value?.id === id) {
+        await fetchPacote(id)
+      }
     } catch (err) {
-      console.error(err.response?.data?.detail || 'Erro ao registrar pagamento')
+      erro.value = getErrorMessage(err, 'Erro ao registrar pagamento')
       throw err
     }
   }
@@ -97,26 +121,32 @@ export const usePacotesStore = defineStore('pacotes', () => {
   async function updateAgendamento(id, data) {
     try {
       const response = await pacoteApi.atualizarAgendamento(id, data)
-      if (pacoteAtual.value && pacoteAtual.value.agendamentos) {
-        const idx = pacoteAtual.value.agendamentos.findIndex(a => a.id === id)
-        if (idx > -1) pacoteAtual.value.agendamentos[idx] = response.data
+      if (pacoteAtual.value?.agendamentos) {
+        const index = pacoteAtual.value.agendamentos.findIndex(a => a.id === id)
+        if (index !== -1) {
+          pacoteAtual.value.agendamentos[index] = response.data
+          pacoteAtual.value.total_agendamentos = pacoteAtual.value.agendamentos.length
+        }
       }
       return response.data
     } catch (err) {
-      console.error(err.response?.data?.detail || 'Erro ao atualizar agendamento')
+      erro.value = getErrorMessage(err, 'Erro ao atualizar agendamento')
       throw err
     }
   }
 
   return {
+    // State
     pacotes,
     pacoteAtual,
     loading,
     erro,
+    // Getters
     totalPacotes,
     pacotesAtivos,
     pacotesAbertos,
     totalReceitaPrevista,
+    // Actions
     fetchPacotes,
     fetchPacote,
     criarPacote,
@@ -126,4 +156,3 @@ export const usePacotesStore = defineStore('pacotes', () => {
     updateAgendamento
   }
 })
-
