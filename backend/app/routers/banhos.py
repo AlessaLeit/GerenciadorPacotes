@@ -7,7 +7,8 @@ from typing import List
 from app.database import get_db
 from app.models import Banho, Pacote, Cachorro, Cliente
 from app.schemas import BanhoCreate, BanhoUpdate, BanhoResponse
-from app.services import PacoteService
+from app.services.pacote_service import PacoteService
+
 
 router = APIRouter(redirect_slashes=True)
 

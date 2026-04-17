@@ -17,9 +17,13 @@ export const pacoteApi = {
       params: { valor_pago, data_pagamento }
     }),
 
-  // Agendamentos
+  // Agendamentos - NOVO ENDPOINT conforme task
+  listarAgendamentosPacote: (pacoteId) => api.get(`/pacotes/${pacoteId}/agendamentos`),
+  
+  // Legacy (mantém para compatibilidade)
   listarAgendamentos: (pacoteId) => api.get('/agendamentos', { params: { pacote_id: pacoteId } }),
   atualizarAgendamento: (id, data) => api.put(`/agendamentos/${id}`, data)
 }
 
 export default pacoteApi
+

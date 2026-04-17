@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Dict, Any
 from app.database import get_db
-from app.services import RelatorioService
+from app.services.relatorio_service import RelatorioService
 
 router = APIRouter(redirect_slashes=True)
 

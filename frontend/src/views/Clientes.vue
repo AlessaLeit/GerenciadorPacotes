@@ -2,10 +2,12 @@
   <div class="clientes-view">
     <div class="header-actions">
       <h1>Clientes e Pets</h1>
+      <br>
       <button @click="showNovoCliente = true" class="btn btn-primary">
         + Novo Cliente
       </button>
     </div>
+    <br>
     
     <div class="card">
       <input 
