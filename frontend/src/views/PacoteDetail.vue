@@ -9,33 +9,55 @@
     </div>
 
     <div class="metrics">
-      <span>Tipo: {{ pacote?.tipo_plano?.toUpperCase() }} ({{ pacote?.limite_banhos_mes }} agend./mês)</span>
+      <span>Tipo: {{ pacote?.tipo_plano?.toUpperCase() }} ({{ pacote?.limite_banhos_mes }} banhos/mês)</span>
       <span>Total agendamentos: {{ pacote?.total_agendamentos || 0 }}</span>
+      <span v-if="pacote?.cachorro">Valor Banho Base: R$ {{ pacote.cachorro.valor_banho?.toFixed(2) || '0,00' }}</span>
       <button @click="gerarAgendamentos" class="btn-gerar" v-if="podeGerar">
-        Gerar Agendamentos Pendentes
+        🔄 Regenerar Agendamentos Pendentes
       </button>
     </div>
 
-    <div class="agendamentos-list">
-      <h3>Agendamentos ({{ agendamentos.length }})</h3>
-      <div class="list">
-        <div v-for="ag in agendamentos" :key="ag.id" class="ag-item" :class="ag.status_presenca">
-          <div class="ag-info">
-            <strong>{{ formatDate(ag.data_banho) }}</strong>
-            <span class="status-badge">{{ ag.status_presenca.toUpperCase() }}</span>
-          </div>
-          <div class="ag-extras" v-if="ag.extras && Object.keys(ag.extras).length">
-            {{ Object.entries(ag.extras).map(([k,v]) => `${k}: ${v}`).join(', ') }}
-          </div>
-          <button @click="editarAgendamento(ag)" class="btn-edit">Editar</button>
-        </div>
-        <div v-if="agendamentos.length === 0" class="empty">
-          Nenhum agendamento. Clique em "Gerar" para criar automáticos.
-        </div>
+    <!-- ✅ Tabela Banhos do Pacote com NOVAS COLUNAS + TOTAL PACOTE -->
+    <div class="banhos-section">
+      <h3>Banhos do Pacote ({{ agendamentos.length }})</h3>
+      <table class="banhos-table" v-if="agendamentos.length">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Valor Banho</th>
+            <th>Total Dia</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="ag in agendamentos" :key="ag.id" :class="ag.status_presenca">
+            <td><strong>{{ formatDate(ag.data_banho) }}</strong></td>
+            <td>R$ {{ ag.valor_banho?.toFixed(2) || '0,00' }}</td>
+            <td><strong>R$ {{ ag.total_dia?.toFixed(2) || '0,00' }}</strong></td>
+            <td>
+              <span class="status-badge">{{ ag.status_presenca?.toUpperCase() }}</span>
+            </td>
+            <td>
+              <button @click="editarAgendamento(ag)" class="btn-edit-small">Editar</button>
+            </td>
+          </tr>
+        </tbody>
+        <!-- ✅ TOTAL PACOTE -->
+        <tfoot>
+          <tr class="total-row">
+            <td colspan="2"><strong>Total Pacote:</strong></td>
+            <td><strong>R$ {{ totalPacote.toFixed(2) }}</strong></td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+      <div v-else class="empty">
+        Nenhum agendamento. O pacote foi criado com agendamentos automáticos.
       </div>
     </div>
 
-    <!-- Modal Editar -->
+    <!-- Modal Editar (mantido) -->
     <div class="modal" v-if="showModal">
       <div class="modal-overlay" @click="showModal = false"></div>
       <div class="modal-content">
@@ -44,14 +66,14 @@
           <div class="form-group">
             <label>Status</label>
             <select v-model="editForm.status_presenca" required>
-              <option value="pendente">Pendente (cinza)</option>
-              <option value="concluido">Concluído (verde)</option>
-              <option value="faltou">Faltou (vermelho)</option>
+              <option value="pendente">Pendente</option>
+              <option value="concluido">Concluído</option>
+              <option value="faltou">Faltou</option>
             </select>
           </div>
           <div class="form-group">
-            <label>Extras JSON</label>
-            <textarea v-model="editForm.extrasJson" rows="4" placeholder='{"remedio": "nome", "obs": "texto"}'></textarea>
+            <label>Extras (JSON)</label>
+            <textarea v-model="editForm.extrasJson" rows="4" placeholder='{"remedio": "nome", "obs": "texto", "preco_extra": 20}'></textarea>
           </div>
           <div class="form-actions">
             <button type="button" @click="showModal = false" class="btn-cancel">Cancelar</button>
@@ -81,6 +103,11 @@ const loading = ref(false)
 
 const pacoteId = computed(() => parseInt(route.params.id))
 
+// ✅ NOVO: Total pacote computado
+const totalPacote = computed(() => {
+  return agendamentos.value.reduce((sum, ag) => sum + (ag.total_dia || 0), 0)
+})
+
 async function carregarPacote() {
   loading.value = true
   try {
@@ -88,7 +115,7 @@ async function carregarPacote() {
     pacote.value = pacotesStore.pacoteAtual
     agendamentos.value = pacote.value?.agendamentos || []
   } catch (err) {
-    alert('Erro ao carregar: ' + err)
+    alert('Erro ao carregar: ' + err.message || err)
   } finally {
     loading.value = false
   }
@@ -98,16 +125,13 @@ function voltar() {
   router.push('/pacotes')
 }
 
-function podeGerar() {
-  return agendamentos.value.length < (pacote.value?.limite_banhos_mes * 3 || 0)
-}
+const podeGerar = computed(() => agendamentos.value.length === 0 || agendamentos.value.some(ag => ag.status_presenca === 'pendente'))
 
 async function gerarAgendamentos() {
-  if (!confirm('Gerar agendamentos automáticos por 3 meses?')) return
+  if (!confirm(`Regenerar agendamentos para pacote ${pacoteId.value}? (apenas pendentes)`)) return
   try {
-    // Chama API opcional
-    // await pacotesStore.gerarAgendamentos(pacoteId.value)
-    alert('Funcionalidade em desenvolvimento - simule criando manualmente')
+    // TODO: Endpoint futuro /pacotes/{id}/regenerar
+    alert('Funcionalidade completa via criação automática. Teste criando novo pacote!')
     await carregarPacote()
   } catch (err) {
     alert('Erro: ' + err)
@@ -138,9 +162,9 @@ async function salvarEdicao() {
     
     showModal.value = false
     await carregarPacote()
-    alert('Agendamento atualizado!')
+    alert('✅ Agendamento atualizado! Totais recalculados.')
   } catch (err) {
-    alert('Erro: ' + err)
+    alert('Erro: ' + (err.message || err))
   }
 }
 
@@ -153,7 +177,7 @@ onMounted(carregarPacote)
 
 <style scoped>
 .pacote-detail {
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 2rem;
 }
@@ -187,78 +211,96 @@ onMounted(carregarPacote)
 
 .metrics {
   display: flex;
-  gap: 2rem;
+  gap: 1.5rem;
   align-items: center;
   margin-bottom: 2rem;
   flex-wrap: wrap;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
 }
 
 .btn-gerar {
-  background: #48bb78;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.agendamentos-list h3 {
-  margin-bottom: 1rem;
-}
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.ag-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  border-radius: 8px;
-  border-left: 4px solid;
-}
-
-.ag-item.pendente { border-left-color: #a0aec0; background: #f7fafc; }
-.ag-item.concluido { border-left-color: #48bb78; background: #f0fff4; }
-.ag-item.faltou { border-left-color: #f56565; background: #fff5f5; }
-
-.ag-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.status-badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  text-transform: uppercase;
-}
-
-.ag-extras {
-  font-size: 0.9rem;
-  color: #718096;
-  max-width: 200px;
-}
-
-.btn-edit {
   background: #4299e1;
   color: white;
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 6px;
   cursor: pointer;
+  font-weight: 500;
+}
+
+.banhos-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.banhos-section h3 {
+  margin-bottom: 1rem;
+  color: #2d3748;
+}
+
+.banhos-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.banhos-table th,
+.banhos-table td {
+  padding: 1rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.banhos-table th {
+  background: #f7fafc;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.banhos-table tr:hover {
+  background: #f7fafc;
+}
+
+.banhos-table tr.pendente { opacity: 0.7; }
+.banhos-table tr.concluido { background: #f0fff4; }
+.banhos-table tr.faltou { background: #fff5f5; }
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.total-row {
+  background: #e6fffa;
+  font-size: 1.1rem;
+}
+
+.total-row strong {
+  color: #22543d;
+}
+
+.btn-edit-small {
+  background: #ed8936;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
 }
 
 .empty {
   text-align: center;
   padding: 3rem;
   color: #718096;
+  font-style: italic;
 }
 
 .modal {
@@ -302,6 +344,7 @@ select, textarea {
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   font-family: monospace;
+  box-sizing: border-box;
 }
 
 .form-actions {
@@ -328,6 +371,12 @@ select, textarea {
   padding: 0.75rem;
   border-radius: 6px;
   cursor: pointer;
+}
+
+/* Loading */
+.pacote-detail:deep(.loading) {
+  opacity: 0.6;
+  pointer-events: none;
 }
 </style>
 

@@ -2,10 +2,12 @@
   <div class="clientes-view">
     <div class="header-actions">
       <h1>Clientes e Pets</h1>
+      <br>
       <button @click="showNovoCliente = true" class="btn btn-primary">
         + Novo Cliente
       </button>
     </div>
+    <br>
     
     <div class="card">
       <input 
@@ -39,7 +41,9 @@
               <span class="dog-nome">{{ dog.nome }}</span>
               <span class="dog-info">{{ dog.raca }} • {{ dog.porte }}</span>
               <div class="dog-actions">
+                <button @click="editarCachorro(cliente, dog)" class="btn btn-sm" title="Editar Pet">Editar</button>
                 <button @click="verPacotesCachorro(dog)" class="btn btn-sm btn-pacotes" title="Ver Pacotes">📦 Pacotes</button>
+                <button @click="confirmarExclusaoCachorro(cliente.id, dog)" class="btn btn-danger btn-sm" title="Excluir Pet">🗑️</button>
               </div>
             </div>
             <span v-if="dog.observacoes" class="dog-obs">{{ dog.observacoes }}</span>
@@ -81,7 +85,7 @@
     <div class="modal" v-if="showNovoCachorro">
       <div class="modal-overlay" @click="showNovoCachorro = false"></div>
       <div class="modal-content">
-        <h3>Novo Pet - {{ clienteAtual?.nome }}</h3>
+        <h3>{{ editandoDog ? 'Editar' : 'Novo' }} Pet - {{ clienteAtual?.nome }}</h3>
         <form @submit.prevent="salvarCachorro">
           <div class="form-group">
             <label>Nome *</label>
@@ -125,7 +129,9 @@ const busca = ref('')
 const showNovoCliente = ref(false)
 const showNovoCachorro = ref(false)
 const editando = ref(false)
+const editandoDog = ref(false)
 const clienteAtual = ref(null)
+const dogAtual = ref(null)
 
 const formCliente = ref({ nome: '', telefone: '', endereco: '' })
 const formCachorro = ref({ nome: '', raca: '', porte: 'medio', observacoes: '', cliente_id: null })
@@ -146,8 +152,17 @@ function editarCliente(cliente) {
 }
 
 function adicionarCachorro(cliente) {
+  editandoDog.value = false
   clienteAtual.value = cliente
   formCachorro.value = { nome: '', raca: '', porte: 'medio', observacoes: '', cliente_id: cliente.id }
+  showNovoCachorro.value = true
+}
+
+function editarCachorro(cliente, dog) {
+  editandoDog.value = true
+  clienteAtual.value = cliente
+  dogAtual.value = dog
+  formCachorro.value = { ...dog }
   showNovoCachorro.value = true
 }
 
@@ -172,10 +187,16 @@ async function salvarCliente() {
 
 async function salvarCachorro() {
   try {
-    await clientesStore.adicionarCachorro(clienteAtual.value.id, formCachorro.value)
+    if (editandoDog.value) {
+      await clientesStore.atualizarCachorro(clienteAtual.value.id, dogAtual.value.id, formCachorro.value)
+      alert('Pet atualizado com sucesso!')
+    } else {
+      await clientesStore.adicionarCachorro(clienteAtual.value.id, formCachorro.value)
+      alert('Pet adicionado com sucesso!')
+    }
     showNovoCachorro.value = false
     formCachorro.value = { nome: '', raca: '', porte: 'medio', observacoes: '', cliente_id: null }
-    alert('Pet adicionado com sucesso!')
+    editandoDog.value = false
   } catch (err) {
     alert('Erro ao adicionar pet: ' + err)
   }
@@ -190,6 +211,18 @@ async function confirmarExclusao(cliente) {
     alert('Cliente excluído com sucesso!')
   } catch (err) {
     alert('Erro ao excluir cliente: ' + err)
+  }
+}
+
+async function confirmarExclusaoCachorro(clienteId, dog) {
+  if (!confirm(`Deseja realmente excluir o pet "${dog.nome}"?`)) {
+    return
+  }
+  try {
+    await clientesStore.deletarCachorro(clienteId, dog.id)
+    alert('Pet excluído com sucesso!')
+  } catch (err) {
+    alert('Erro ao excluir pet: ' + err)
   }
 }
 
