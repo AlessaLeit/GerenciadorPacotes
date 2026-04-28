@@ -1,6 +1,8 @@
 # Estágio de Build
 FROM node:20-slim AS build-stage
 WORKDIR /app
+ARG VITE_API_URL=/api/v1
+ENV VITE_API_URL=${VITE_API_URL}
 COPY package*.json ./
 RUN rm -f package-lock.json && npm install
 COPY . .

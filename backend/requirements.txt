@@ -8,4 +8,5 @@ python-dotenv==1.0.1
 python-dateutil==2.9.0
 openpyxl==3.1.5
 reportlab==4.2.5
-psycopg[binary]
+psycopg2-binary
+pytest==7.4.0

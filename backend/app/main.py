@@ -35,6 +35,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",  # Vite dev server
         "http://localhost:3000",  # Alternativa comum
+        "http://localhost",       # Nginx frontend container
+        "http://127.0.0.1",       # Localhost alternativo
+        "http://frontend",        # Nome do serviço no Docker
     ],
     allow_credentials=True,
     allow_methods=["*"],

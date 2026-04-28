@@ -27,14 +27,15 @@ services:
     build: 
       context: ./backend
       dockerfile: Dockerfile
+    image: alessaleit/pacotesbanho-backend:latest
     container_name: petshop_backend
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_local:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_local:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379
       DEBUG: "true"
       LOG_LEVEL: "debug"
     ports:
-      - ${BACKEND_PORT}:8000
+      - "${BACKEND_PORT:-8000}:8000"
     depends_on:
       postgres_local:
         condition: service_healthy
@@ -42,7 +43,7 @@ services:
         condition: service_started
     volumes:
       - ./backend:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --log-level debug
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level debug
     restart: unless-stopped
     networks:
       - petshop_network
@@ -51,6 +52,9 @@ services:
     build: 
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api/v1
+    image: alessaleit/pacotesbanho-frontend:latest
     container_name: petshop_frontend
     ports:
       - "80:80"
