@@ -24,14 +24,13 @@ services:
     # dns:
     #  - 8.8.8.8 google
     #  - 1.1.1.1 cloudflare
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile
     image: alessaleit/pacotesbanho-backend:latest
     container_name: petshop_backend
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_local:5432/${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379
       DEBUG: "true"
       LOG_LEVEL: "debug"
     ports:
@@ -39,17 +38,21 @@ services:
     depends_on:
       postgres_local:
         condition: service_healthy
-      redis:
-        condition: service_started
     volumes:
       - ./backend:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level debug
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - petshop_network
 
   frontend:
-    build: 
+    build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
@@ -59,22 +62,8 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend
-    networks:
-      - petshop_network
-
-  redis:
-    image: redis:7-alpine
-    container_name: petshop_redis
-    networks:
-      - petshop_network
-    restart: unless-stopped
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: petshop_prometheus
-    ports:
-      - "9090:9090"
+      backend:
+        condition: service_healthy
     networks:
       - petshop_network
 
