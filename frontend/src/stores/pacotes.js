@@ -21,7 +21,9 @@ export const usePacotesStore = defineStore('pacotes', () => {
     erro.value = null
     try {
       const response = await pacoteApi.listar(params)
-      pacotes.value = response.data
+
+  pacotes.value = Array.isArray(response.data) ? response.data : []
+
     } catch (err) {
       erro.value = err.response?.data?.detail || 'Erro ao carregar pacotes'
       console.error(erro.value)
@@ -33,14 +35,9 @@ export const usePacotesStore = defineStore('pacotes', () => {
   async function fetchPacote(id) {
     loading.value = true
     try {
-      const response = await pacoteApi.obter(id)
-      // ✅ ATUALIZADO: Usa novo endpoint /pacotes/{id}/agendamentos com valores computados
-      const agsResp = await pacoteApi.listarAgendamentosPacote(id)
-      pacoteAtual.value = {
-        ...response.data,
-        agendamentos: agsResp.data || [],
-        total_agendamentos: agsResp.data?.length || 0
-      }
+      // ✅ NOVO: Usa endpoint otimizado /pacotes/{id}/detalhes-com-agendamentos
+      const response = await pacoteApi.detalhesComAgendamentos(id)
+      pacoteAtual.value = response.data
       return pacoteAtual.value
     } catch (err) {
       erro.value = err.response?.data?.detail || 'Erro ao carregar pacote'
@@ -103,6 +100,66 @@ export const usePacotesStore = defineStore('pacotes', () => {
     }
   }
 
+  // ✅ NOVO: Atualizar apenas a data de um agendamento
+  async function updateAgendamentoData(id, data_banho) {
+    try {
+      const response = await pacoteApi.atualizarDataAgendamento(id, data_banho)
+      // Atualiza localmente se pacoteAtual estiver carregado
+      if (pacoteAtual.value && pacoteAtual.value.agendamentos) {
+        const idx = pacoteAtual.value.agendamentos.findIndex(a => a.id === id)
+        if (idx > -1) {
+          pacoteAtual.value.agendamentos[idx] = { 
+            ...pacoteAtual.value.agendamentos[idx], 
+            data_banho: response.data.data_banho 
+          }
+          // Reordena por data
+          pacoteAtual.value.agendamentos.sort((a, b) => 
+            new Date(a.data_banho) - new Date(b.data_banho)
+          )
+        }
+      }
+      return response.data
+    } catch (err) {
+      console.error(err.response?.data?.detail || 'Erro ao atualizar data do agendamento')
+      throw err
+    }
+  }
+
+  // ✅ NOVO: Remover agendamento
+  async function removerAgendamento(id) {
+    try {
+      await pacoteApi.deletarAgendamento(id)
+      // Remove localmente
+      if (pacoteAtual.value && pacoteAtual.value.agendamentos) {
+        pacoteAtual.value.agendamentos = pacoteAtual.value.agendamentos.filter(a => a.id !== id)
+        pacoteAtual.value.total_agendamentos = pacoteAtual.value.agendamentos.length
+      }
+    } catch (err) {
+      console.error(err.response?.data?.detail || 'Erro ao remover agendamento')
+      throw err
+    }
+  }
+
+  // ✅ NOVO: Adicionar agendamento extra
+  async function adicionarExtra(pacoteId, data_banho) {
+    try {
+      const response = await pacoteApi.adicionarAgendamentoExtra(pacoteId, data_banho)
+      // Adiciona localmente
+      if (pacoteAtual.value && pacoteAtual.value.agendamentos) {
+        pacoteAtual.value.agendamentos.push(response.data)
+        // Reordena por data
+        pacoteAtual.value.agendamentos.sort((a, b) => 
+          new Date(a.data_banho) - new Date(b.data_banho)
+        )
+        pacoteAtual.value.total_agendamentos = pacoteAtual.value.agendamentos.length
+      }
+      return response.data
+    } catch (err) {
+      console.error(err.response?.data?.detail || 'Erro ao adicionar agendamento extra')
+      throw err
+    }
+  }
+
   async function updateAgendamento(id, data) {
     try {
       const response = await pacoteApi.atualizarAgendamento(id, data)
@@ -135,7 +192,10 @@ export const usePacotesStore = defineStore('pacotes', () => {
     atualizarPacote,
     deletarPacote,
     registrarPagamento,
-    updateAgendamento
+    updateAgendamento,
+    updateAgendamentoData,
+    removerAgendamento,
+    adicionarExtra
   }
 })
 

@@ -10,8 +10,10 @@ export const useAgendamentosStore = defineStore('agendamentos', {
     async fetchDashboard(data = null) {
       try {
         const response = await agendamentosApi.listarDashboard(data)
-        this.agendamentosDashboard = response.data
-        return response.data
+        // Ensure array even if API returns unexpected data
+        this.agendamentosDashboard = Array.isArray(response.data) ? response.data : []
+        console.log('Dashboard agendamentos loaded:', this.agendamentosDashboard.length)
+        return this.agendamentosDashboard
       } catch (error) {
         console.error('Erro ao carregar agendamentos:', error)
         this.agendamentosDashboard = []
@@ -25,7 +27,7 @@ export const useAgendamentosStore = defineStore('agendamentos', {
         // Atualizar localmente
         const index = this.agendamentosDashboard.findIndex(a => a.id === agendamentoId)
         if (index !== -1) {
-          this.agendamentosDashboard[index] = response.data
+          this.agendamentosDashboard[index] = Array.isArray(response.data) ? response.data[0] : response.data
         }
         return response.data
       } catch (error) {

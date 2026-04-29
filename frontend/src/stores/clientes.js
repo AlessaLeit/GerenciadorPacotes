@@ -28,7 +28,9 @@ export const useClientesStore = defineStore('clientes', () => {
     erro.value = null
     try {
       const response = await clienteApi.listar(params)
-      clientes.value = response.data
+
+  clientes.value = Array.isArray(response.data) ? response.data : []
+
     } catch (err) {
       erro.value = err.response?.data?.detail || 'Erro ao carregar clientes'
       console.error('Clientes fetch error:', err)

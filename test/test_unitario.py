@@ -33,17 +33,41 @@ def setup_db():
 # --- FUNCIONALIDADE 1: Gestão de Clientes ---
 
 def test_ct01_cadastro_cliente_valido():
-    """CT01: Cadastro de Cliente Válido (Positivo)"""
-    response = client.post("/api/v1/clientes/", json={"nome": "João Silva", "telefone": "11999999999"})
+    """CT01: Cadastro de Cliente Válido (Positivo)
+    Tentar cadastrar um cliente fornecendo apenas o campo obrigatório nome.
+    O cliente deve ser salvo no banco de dados com sucesso e um ID único deve ser gerado.
+    """
+    response = client.post("/api/v1/clientes/", json={"nome": "João Silva"})
     assert response.status_code == 201
     data = response.json()
     assert data["nome"] == "João Silva"
     assert "id" in data
+    cliente_id = data["id"]
+    assert isinstance(cliente_id, int) and cliente_id > 0
 
-def test_ct02_cadastro_cliente_sem_nome():
-    """CT02: Cadastro de Cliente sem Nome (Negativo)"""
-    response = client.post("/api/v1/clientes/", json={"telefone": "11999999999"})
+    # Verifica que o cliente foi realmente persistido no banco de dados
+    get_resp = client.get(f"/api/v1/clientes/{cliente_id}")
+    assert get_resp.status_code == 200
+    assert get_resp.json()["nome"] == "João Silva"
+
+
+@pytest.mark.parametrize("payload", [
+    {"telefone": "11999999999"},          # campo nome ausente
+    {"nome": "", "telefone": "11999999999"},  # campo nome vazio
+])
+def test_ct02_cadastro_cliente_sem_nome(payload):
+    """CT02: Cadastro de Cliente sem Nome (Negativo)
+    Tentar cadastrar um cliente enviando o campo nome vazio ou nulo.
+    O sistema deve retornar um erro de validação (422 Unprocessable Entity)
+    informando que o nome é obrigatório.
+    """
+    response = client.post("/api/v1/clientes/", json=payload)
     assert response.status_code == 422
+    detail = response.json().get("detail", [])
+    # Verifica se há alguma mensagem de erro relacionada ao campo 'nome'
+    assert any("nome" in str(err).lower() for err in detail), (
+        f"Esperava erro de validação para o campo 'nome', mas recebeu: {detail}"
+    )
 
 # --- FUNCIONALIDADE 2: Controle de Pacotes ---
 
@@ -92,3 +116,4 @@ def test_ct06_edicao_status_presenca():
     up_resp = client.put(f"/api/v1/agendamentos/{ag_id}", json={"status_presenca": "concluido"})
     assert up_resp.status_code == 200
     assert up_resp.json()["status_presenca"] == "concluido"
+

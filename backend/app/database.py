@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import StaticPool
 from pydantic_settings import BaseSettings
 from typing import Generator
+import os
 
 
 class Settings(BaseSettings):
@@ -24,11 +25,19 @@ class Settings(BaseSettings):
 # Instância global das configurações
 settings = Settings()
 
+# ✅ CORREÇÃO: Força SQLite quando rodando localmente (fora do Docker)
+# Se o .env apontar para PostgreSQL com host "db", usa SQLite local
+_database_url = settings.DATABASE_URL
+if "postgresql" in _database_url and "@db:" in _database_url:
+    # Estamos rodando fora do Docker, usar SQLite local
+    _database_url = "sqlite:///./banho_tosa.db"
+    print(f"[DB] Detectado PostgreSQL Docker ('db'), usando SQLite local: {_database_url}")
+
 # Criação do engine com configurações específicas para SQLite/PostgreSQL
-if settings.DATABASE_URL.startswith("sqlite"):
+if _database_url.startswith("sqlite"):
     # SQLite requer check_same_thread=False para uso com FastAPI
     engine = create_engine(
-        settings.DATABASE_URL,
+        _database_url,
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
         echo=settings.DEBUG
@@ -36,7 +45,7 @@ if settings.DATABASE_URL.startswith("sqlite"):
 else:
     # PostgreSQL ou outros bancos de produção
     engine = create_engine(
-        settings.DATABASE_URL,
+        _database_url,
         pool_pre_ping=True,
         echo=settings.DEBUG
     )

@@ -92,6 +92,28 @@ def atualizar_agendamento(
     db.refresh(db_ag)
     return db_ag
 
+
+@router.put("/{agendamento_id}/data", response_model=AgendamentoResponse)
+def atualizar_data_agendamento(
+    agendamento_id: int,
+    data_banho: date,
+    db: Session = Depends(get_db)
+):
+    """
+    Edita APENAS a data_banho de um agendamento.
+    Permite qualquer dia (retroativo ou futuro).
+    """
+    db_ag = db.query(Agendamento).filter(Agendamento.id == agendamento_id).first()
+    if not db_ag:
+        raise HTTPException(status_code=404, detail="Agendamento não encontrado")
+    
+    db_ag.data_banho = data_banho
+    
+    db.commit()
+    db.refresh(db_ag)
+    return db_ag
+
+
 @router.delete("/{agendamento_id}", status_code=status.HTTP_204_NO_CONTENT)
 def deletar_agendamento(agendamento_id: int, db: Session = Depends(get_db)):
     """

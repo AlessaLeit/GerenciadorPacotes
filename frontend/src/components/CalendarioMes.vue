@@ -83,7 +83,7 @@ const diasCalendario = computed(() => {
       numero: i,
       atual: true,
       hoje: data.toDateString() === hoje.toDateString(),
-      temBanho: props.banhos.some(b => b.data_banho === dataStr)
+      temBanho: Array.isArray(props.banhos) ? props.banhos.some(b => b.data_banho === dataStr) : false
     })
   }
   
