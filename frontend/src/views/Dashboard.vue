@@ -72,10 +72,14 @@
               <strong>Extras:</strong> {{ Object.entries(ag.extras).map(([k,v]) => `${k}: ${v}`).join(', ') }}
             </div>
           </div>
-          <button @click="editarAgendamento(ag)" class="btn-editar">Editar</button>
+          <div class="ag-actions">
+            <button @click="confirmarRemoverAgendamento(ag)" class="btn-excluir">Excluir</button>
+          </div>
+
         </div>
       </div>
     </div>
+
     
     <div class="card">
       <h2>📦 Pacotes em Aberto</h2>
@@ -99,29 +103,7 @@
       @confirmar="confirmarPagamento"
     />
     
-    <!-- Modal Editar Agendamento -->
-    <div v-if="showModalEdit" class="modal-overlay" @click="showModalEdit = false">
-      <div class="modal" @click.stop>
-        <h3>Editar Status - {{ agEdit.pet_nome }}</h3>
-        <div class="form-group">
-          <label>Status:</label>
-          <select v-model="agEdit.status_presenca">
-            <option value="pendente">🟡 Pendente</option>
-            <option value="concluido">🟢 Concluído</option>
-            <option value="faltou">🔴 Faltou</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Extras (JSON):</label>
-          <textarea v-model="agEdit.extras_str" rows="3" placeholder='{"observacao": "Banho extra", "medicamento": true}'></textarea>
-          <small>Formato JSON simples</small>
-        </div>
-        <div class="modal-actions">
-          <button @click="salvarAgendamento" class="btn-primary">Salvar</button>
-          <button @click="showModalEdit = false" class="btn-secondary">Cancelar</button>
-        </div>
-      </div>
-    </div>
+
   </div>
 </template>
 
@@ -140,8 +122,7 @@ const pacotesStore = usePacotesStore()
 
 const agendamentosStore = useAgendamentosStore()
 const dataSelecionada = ref(new Date().toISOString().split('T')[0])
-const showModalEdit = ref(false)
-const agEdit = ref(null)
+
 
 const showPagamento = ref(false)
 const pacoteSelecionado = ref(null)
@@ -185,9 +166,9 @@ async function confirmarPagamento(dados) {
       dados.data_pagamento
     )
     showPagamento.value = false
-    alert('Pagamento registrado com sucesso!')
+
   } catch (err) {
-    alert('Erro ao registrar pagamento: ' + err)
+
   }
 }
 
@@ -195,7 +176,7 @@ async function carregarAgendamentos() {
   try {
     await agendamentosStore.fetchDashboard(dataSelecionada.value)
   } catch (err) {
-    alert('Erro ao carregar agendamentos: ' + err.message)
+
   }
 }
 
@@ -208,27 +189,33 @@ function formatarData(dataStr) {
   return new Date(dataStr).toLocaleDateString('pt-BR')
 }
 
-function editarAgendamento(ag) {
-  agEdit.value = {
-    ...ag,
-    extras_str: JSON.stringify(ag.extras || {}, null, 2)
-  }
-  showModalEdit.value = true
-}
 
-async function salvarAgendamento() {
-  try {
-    const extras = JSON.parse(agEdit.value.extras_str || '{}')
-    await agendamentosStore.updateStatus(agEdit.value.id, {
-      status_presenca: agEdit.value.status_presenca,
-      extras: extras
-    })
-    showModalEdit.value = false
-    alert('Agendamento atualizado!')
-  } catch (err) {
-    alert('Erro ao salvar: ' + err.response?.data?.detail || err.message)
-  }
-}
+
+    async function confirmarRemoverAgendamento(ag) {
+
+      try {
+        await agendamentosStore.deletarAgendamento(ag.id)
+        await carregarAgendamentos()
+      } catch (err) {
+      }
+
+
+    }
+
+    async function salvarAgendamento() {
+      try {
+        const extras = JSON.parse(agEdit.value.extras_str || '{}')
+        await agendamentosStore.updateStatus(agEdit.value.id, {
+          status_presenca: agEdit.value.status_presenca,
+          extras: extras
+        })
+        showModalEdit.value = false
+
+      } catch (err) {
+
+      }
+    }
+
 
 onMounted(async () => {
   clientesStore.fetchClientes()

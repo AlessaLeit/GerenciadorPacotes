@@ -34,7 +34,20 @@ export const useAgendamentosStore = defineStore('agendamentos', {
         console.error('Erro ao atualizar agendamento:', error)
         throw error
       }
+    },
+
+    // Excluir agendamento do dia (interligado com Pacotes)
+    async deletarAgendamento(agendamentoId) {
+      try {
+        await agendamentosApi.deletarAgendamento(agendamentoId)
+        // Remover localmente
+        this.agendamentosDashboard = this.agendamentosDashboard.filter(a => a.id !== agendamentoId)
+      } catch (error) {
+        console.error('Erro ao deletar agendamento:', error)
+        throw error
+      }
     }
   }
 })
+
 

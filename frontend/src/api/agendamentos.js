@@ -13,7 +13,11 @@ export const agendamentosApi = {
   },
   
   // Editar status/extras
-  atualizarStatus: (id, dados) => api.put(`/agendamentos/${id}`, dados)
+  atualizarStatus: (id, dados) => api.put(`/agendamentos/${id}`, dados),
+
+  // Excluir agendamento do dia
+  deletarAgendamento: (id) => api.delete(`/agendamentos/${id}`)
 }
+
 
 export default agendamentosApi

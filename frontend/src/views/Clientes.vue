@@ -208,11 +208,11 @@ async function confirmarExclusao(cliente) {
   }
   try {
     await clientesStore.deletarCliente(cliente.id)
-    alert('Cliente excluído com sucesso!')
   } catch (err) {
     alert('Erro ao excluir cliente: ' + err)
   }
 }
+
 
 async function confirmarExclusaoCachorro(clienteId, dog) {
   if (!confirm(`Deseja realmente excluir o pet "${dog.nome}"?`)) {
@@ -220,11 +220,11 @@ async function confirmarExclusaoCachorro(clienteId, dog) {
   }
   try {
     await clientesStore.deletarCachorro(clienteId, dog.id)
-    alert('Pet excluído com sucesso!')
   } catch (err) {
     alert('Erro ao excluir pet: ' + err)
   }
 }
+
 
 onMounted(() => {
   clientesStore.fetchClientes()

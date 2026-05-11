@@ -1,0 +1,12 @@
+Atenção: este repositório parece não estar usando migrations Alembic de forma consistente.
+
+Para corrigir o erro atual (pacotes.dia_da_semana inexistente), é necessário atualizar o esquema do banco (SQLite) para adicionar a coluna `dia_da_semana` na tabela `pacotes`.
+
+Opção 1 (recomendada): gerar/aplicar uma migration Alembic real.
+Opção 2: alterar manualmente o SQLite local (banho_tosa.db) adicionando a coluna.
+
+SQL (SQLite):
+ALTER TABLE pacotes ADD COLUMN dia_da_semana VARCHAR(9);
+
+Depois reiniciar o backend.
+

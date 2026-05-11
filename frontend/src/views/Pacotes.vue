@@ -79,7 +79,7 @@
           
           <div class="form-group">
             <label>Valor Base do Banho (R$)</label>
-            <input v-model.number="novoPacote.valor_base_banho" type="number" step="0.01" required />
+      <input v-model.number="novoPacote.valor_banho_base" type="number" step="0.01" required />
           </div>
           
           <div class="form-group">
@@ -136,7 +136,7 @@ const novoPacote = ref({
   tipo_plano: 'semanal',
   dia_da_semana: 'terca',
   // Base do banho (preço por agendamento)
-  valor_base_banho: 0,
+  valor_banho_base: 0,
   // Valor total do pacote (base * quantidade do plano)
   valor_cobrado: 0
 })
@@ -187,14 +187,14 @@ async function confirmarPagamento(dados) {
       dados.data_pagamento
     )
     showPagamento.value = false
-    alert('Pagamento registrado com sucesso!')
+
   } catch (err) {
-    alert('Erro: ' + err)
+
   }
 }
 
 const valorCobradoCalculado = computed(() => {
-  const base = Number(novoPacote.value.valor_base_banho || 0)
+  const base = Number(novoPacote.value.valor_banho_base || 0)
   const qtd = novoPacote.value.tipo_plano === 'semanal' ? 4 : novoPacote.value.tipo_plano === 'quinzenal' ? 2 : 1
   return base * qtd
 })
@@ -207,6 +207,7 @@ async function criarPacote() {
       tipo_plano: novoPacote.value.tipo_plano,
       dia_da_semana: novoPacote.value.dia_da_semana,
       valor_cobrado: valorCobradoCalculado.value,
+      valor_banho_base: novoPacote.value.valor_banho_base,
     }
 
 
@@ -217,12 +218,12 @@ async function criarPacote() {
       cachorro_id: null,
       tipo_plano: 'semanal',
       dia_da_semana: 'terca',
-      valor_base_banho: 0,
+    valor_banho_base: 0,
       valor_cobrado: 0,
     }
-    alert('Pacote criado com sucesso!')
+
   } catch (err) {
-    alert('Erro ao criar pacote: ' + (err?.response?.data?.detail || err.message || err))
+
   }
 }
 

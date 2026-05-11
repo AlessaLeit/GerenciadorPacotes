@@ -196,11 +196,12 @@ async function carregarPacote() {
     pacote.value = data
     agendamentos.value = data.agendamentos || []
   } catch (err) {
-    alert('Erro ao carregar pacote: ' + (err.message || err))
+
   } finally {
     loading.value = false
   }
 }
+
 
 function voltar() {
   router.push('/pacotes')
@@ -244,9 +245,9 @@ async function salvarNovaData() {
     showEditData.value = false
     agEditando.value = null
     novaData.value = ''
-    alert('✅ Data atualizada com sucesso!')
+
   } catch (err) {
-    alert('Erro ao atualizar data: ' + (err.response?.data?.detail || err.message || err))
+
   }
 }
 
@@ -257,9 +258,9 @@ async function salvarExtra() {
     await pacotesStore.adicionarExtra(pacoteId.value, dataExtra.value)
     showAddExtra.value = false
     dataExtra.value = ''
-    alert('✅ Banho extra adicionado com sucesso!')
+
   } catch (err) {
-    alert('Erro ao adicionar extra: ' + (err.response?.data?.detail || err.message || err))
+
   }
 }
 
@@ -275,9 +276,9 @@ async function executarRemover() {
     await pacotesStore.removerAgendamento(agRemovendo.value.id)
     showConfirmRemove.value = false
     agRemovendo.value = null
-    alert('✅ Agendamento removido com sucesso!')
+
   } catch (err) {
-    alert('Erro ao remover: ' + (err.response?.data?.detail || err.message || err))
+
   }
 }
 
