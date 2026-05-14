@@ -1,47 +1,52 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+import os
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
-from app.database import get_db, settings
-from app.services.auth_service import AuthService
+from dotenv import load_dotenv
 
-router = APIRouter(prefix="/auth", tags=["auth"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
+# Carrega as variáveis do arquivo .env
+load_dotenv()
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+SECRET_KEY = os.getenv("SECRET_KEY", "desenvolvimento-chave-segura-padrao")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@admin.com").strip().lower()
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
-    """Valida o token JWT. Se for inválido, bloqueia o acesso."""
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Não foi possível validar as credenciais",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
-        payload = AuthService.decode_token(token)
-        if payload.get("sub") != settings.ADMIN_USER:
-            raise HTTPException(status_code=401, detail="Usuário não autorizado")
-        return payload.get("sub")
-    except Exception:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        token_data = TokenData(email=email)
+    except JWTError:
+        raise credentials_exception
+    
+    if token_data.email != ADMIN_EMAIL:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido ou expirado",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-@router.post("/register")
-def register():
-    """Rota de registro desativada. Credenciais são geridas via .env."""
-    raise HTTPException(status_code=403, detail="O registro de novos usuários está desativado.")
-
-@router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # Validação direta contra as variáveis de ambiente
-    if form_data.username != settings.ADMIN_USER or form_data.password != settings.ADMIN_PASSWORD:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="E-mail ou senha incorretos",
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado"
         )
     
-    access_token = AuthService.create_access_token(
-        data={"sub": settings.ADMIN_USER}
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return token_data.email

@@ -189,10 +189,8 @@ async function salvarCachorro() {
   try {
     if (editandoDog.value) {
       await clientesStore.atualizarCachorro(clienteAtual.value.id, dogAtual.value.id, formCachorro.value)
-      alert('Pet atualizado com sucesso!')
     } else {
       await clientesStore.adicionarCachorro(clienteAtual.value.id, formCachorro.value)
-      alert('Pet adicionado com sucesso!')
     }
     showNovoCachorro.value = false
     formCachorro.value = { nome: '', raca: '', porte: 'medio', observacoes: '', cliente_id: null }

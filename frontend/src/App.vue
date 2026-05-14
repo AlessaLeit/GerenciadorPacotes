@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <nav class="navbar">
+    <nav v-if="!$route.meta.hideHeader" class="navbar">
       <div class="nav-brand">Canil Recanto Mini Dogs</div>
       <ul class="nav-links">
         <li><router-link to="/">Dashboard</router-link></li>

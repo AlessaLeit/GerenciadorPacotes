@@ -9,5 +9,9 @@ node_modules
 .git
 .gitignore
 dist
-build
+build/
 .env
+# Documentação e Scripts Locais
+README.md
+start.bat
+test/

@@ -56,7 +56,6 @@
           <tr>
             <th>Data</th>
             <th>Valor Banho</th>
-            <th>Total Dia</th>
             <th>Status</th>
             <th>Ações</th>
           </tr>
@@ -64,8 +63,7 @@
         <tbody>
           <tr v-for="ag in agendamentos" :key="ag.id" :class="ag.status_presenca">
             <td><strong>{{ formatarData(ag.data_banho) }}</strong></td>
-            <td>R$ {{ formatarValor(ag.valor_banho) }}</td>
-            <td><strong>R$ {{ formatarValor(ag.total_dia) }}</strong></td>
+            <td>R$ {{ formatarValor(pacote?.valor_banho_base || 0) }}</td>
             <td>
               <span class="status-badge" :class="ag.status_presenca">
                 {{ ag.status_presenca?.toUpperCase() }}

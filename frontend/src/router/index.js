@@ -19,7 +19,8 @@ const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: Login
+    component: Login,
+    meta: { hideHeader: true }
   },
   {
     path: '/pacotes',
@@ -49,14 +50,19 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
-  const publicPages = ['/login']
-  const authRequired = !publicPages.includes(to.path)
+  // Evita divergência entre store e localStorage.
+  // Mesmo que o store demore/ falhe em inicializar, o guard usa o token persistido.
+  const token = localStorage.getItem('token')
+  const isAuthenticated = !!token
 
-  if (authRequired && !authStore.isAuthenticated) {
-    return next('/login')
+  if (to.path !== '/login' && !isAuthenticated) {
+    next('/login')
+  } else if (to.path === '/login' && isAuthenticated) {
+    next('/')
+  } else {
+    next()
   }
-  next()
 })
+
 
 export default router

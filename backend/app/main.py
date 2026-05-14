@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.database import engine, Base
 from app.routers import api_router
+from app.routers import auth
 
 
 @asynccontextmanager
@@ -15,8 +16,14 @@ async def lifespan(app: FastAPI):
     Gerenciamento do ciclo de vida da aplicação.
     Cria tabelas na inicialização (em dev; em prod use Alembic).
     """
-    # Startup: cria tabelas se não existirem
-    Base.metadata.create_all(bind=engine)
+    try:
+        # Startup: cria tabelas se não existirem
+        Base.metadata.create_all(bind=engine)
+        print("✅ Tabelas verificadas/criadas com sucesso.")
+    except Exception as e:
+        print(f"❌ Erro ao conectar no banco de dados: {e}")
+        # Em Docker, é melhor deixar o container crashar para o restart policy atuar
+    
     yield
     # Shutdown: cleanup se necessário
 
@@ -46,6 +53,7 @@ app.add_middleware(
 )
 
 # Registra todos os routers da API
+app.include_router(auth.router, prefix="/api/v1")
 app.include_router(api_router, prefix="/api/v1")
 
 

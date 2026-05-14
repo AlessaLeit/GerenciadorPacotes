@@ -25,10 +25,12 @@ services:
     #  - 8.8.8.8 google
     #  - 1.1.1.1 cloudflare
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     image: alessaleit/pacotesbanho-backend:latest
     container_name: petshop_backend
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_local:5432/${POSTGRES_DB}
       DEBUG: "true"
