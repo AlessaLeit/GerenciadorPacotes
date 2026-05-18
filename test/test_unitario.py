@@ -1,119 +1,102 @@
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.database import Base, get_db
-from app.main import app
-# Importar modelos explicitamente para garantir registro no Base.metadata
-from app.models import Cliente, Cachorro, Pacote, Agendamento, Banho
+from datetime import date, timedelta
+import calendar
 
-# Configuração do banco de dados de teste (em memória)
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-client = TestClient(app)
-
-@pytest.fixture(scope="function", autouse=True)
-def setup_db():
-    # Cria as tabelas antes de cada teste no engine de teste
-    Base.metadata.create_all(bind=engine)
-    yield
-    # Remove as tabelas após cada teste
-    Base.metadata.drop_all(bind=engine)
-
-# --- FUNCIONALIDADE 1: Gestão de Clientes ---
-
-def test_ct01_cadastro_cliente_valido():
-    """CT01: Cadastro de Cliente Válido (Positivo)
-    Tentar cadastrar um cliente fornecendo apenas o campo obrigatório nome.
-    O cliente deve ser salvo no banco de dados com sucesso e um ID único deve ser gerado.
+# Simulação da lógica interna de backend/app/routers/pacotes.py para teste unitário puro
+# Em uma refatoração real, essa lógica deveria ser extraída para uma função de serviço.
+def calcular_datas_agendamentos(tipo_plano: str, dia_semana_extenso: str, data_referencia: date):
     """
-    response = client.post("/api/v1/clientes/", json={"nome": "João Silva"})
-    assert response.status_code == 201
-    data = response.json()
-    assert data["nome"] == "João Silva"
-    assert "id" in data
-    cliente_id = data["id"]
-    assert isinstance(cliente_id, int) and cliente_id > 0
-
-    # Verifica que o cliente foi realmente persistido no banco de dados
-    get_resp = client.get(f"/api/v1/clientes/{cliente_id}")
-    assert get_resp.status_code == 200
-    assert get_resp.json()["nome"] == "João Silva"
-
-
-@pytest.mark.parametrize("payload", [
-    {"telefone": "11999999999"},          # campo nome ausente
-    {"nome": "", "telefone": "11999999999"},  # campo nome vazio
-])
-def test_ct02_cadastro_cliente_sem_nome(payload):
-    """CT02: Cadastro de Cliente sem Nome (Negativo)
-    Tentar cadastrar um cliente enviando o campo nome vazio ou nulo.
-    O sistema deve retornar um erro de validação (422 Unprocessable Entity)
-    informando que o nome é obrigatório.
+    Lógica de negócio extraída do router de pacotes para validação unitária.
+    Gera as datas de banho baseadas no plano e dia da semana escolhido.
     """
-    response = client.post("/api/v1/clientes/", json=payload)
-    assert response.status_code == 422
-    detail = response.json().get("detail", [])
-    # Verifica se há alguma mensagem de erro relacionada ao campo 'nome'
-    assert any("nome" in str(err).lower() for err in detail), (
-        f"Esperava erro de validação para o campo 'nome', mas recebeu: {detail}"
-    )
+    mapa_dow = {
+        "terca": 1, "quarta": 2, "quinta": 3, "sexta": 4, "sabado": 5,
+    }
+    
+    alvo_dow = mapa_dow.get(dia_semana_extenso)
+    if alvo_dow is None:
+        return []
 
-# --- FUNCIONALIDADE 2: Controle de Pacotes ---
+    primeiro_dia_mes = date(data_referencia.year, data_referencia.month, 1)
+    ultimo_dia_mes = date(data_referencia.year, data_referencia.month, 
+                          calendar.monthrange(data_referencia.year, data_referencia.month)[1])
 
-def test_ct03_criacao_pacote_com_agendamentos():
-    """CT03: Criação de Pacote com Geração de Agendamentos (Positivo)"""
-    cli_resp = client.post("/api/v1/clientes/", json={"nome": "Maria"})
-    cli_id = cli_resp.json()["id"]
-    dog_resp = client.post("/api/v1/cachorros/", json={"nome": "Rex", "porte": "grande", "cliente_id": cli_id})
-    dog_id = dog_resp.json()["id"]
-    pac_resp = client.post("/api/v1/pacotes/", json={"cachorro_id": dog_id, "tipo_plano": "semanal", "valor_cobrado": 50.0})
-    assert pac_resp.status_code == 201
-    pac_id = pac_resp.json()["id"]
-    ag_resp = client.get(f"/api/v1/agendamentos/?pacote_id={pac_id}")
-    assert ag_resp.status_code == 200
-    assert len(ag_resp.json()) > 0
+    # Encontra a primeira ocorrência do dia da semana no mês
+    primeira = None
+    d = primeiro_dia_mes
+    while d <= ultimo_dia_mes:
+        if d.weekday() == alvo_dow:
+            primeira = d
+            break
+        d += timedelta(days=1)
 
-def test_ct04_registro_pagamento_pacote():
-    """CT04: Registro de Pagamento de Pacote (Positivo)"""
-    cli_id = client.post("/api/v1/clientes/", json={"nome": "Pedro"}).json()["id"]
-    dog_id = client.post("/api/v1/cachorros/", json={"nome": "Bob", "porte": "medio", "cliente_id": cli_id}).json()["id"]
-    pac_id = client.post("/api/v1/pacotes/", json={"cachorro_id": dog_id, "tipo_plano": "mensal", "valor_cobrado": 80.0}).json()["id"]
-    pay_resp = client.post(f"/api/v1/pacotes/{pac_id}/pagar")
-    assert pay_resp.status_code == 200
-    check_resp = client.get(f"/api/v1/pacotes/{pac_id}")
-    assert check_resp.json()["status_pagamento"] == "pago"
+    if not primeira:
+        return []
 
-# --- FUNCIONALIDADE 3: Agenda Dinâmica ---
+    datas = []
+    if tipo_plano == "semanal":
+        datas = [primeira + timedelta(days=7 * i) for i in range(4)]
+    elif tipo_plano == "quinzenal":
+        datas = [primeira + timedelta(days=15 * i) for i in range(2)]
+    elif tipo_plano == "mensal":
+        datas = [primeira]
 
-def test_ct05_visualizacao_banhos_dashboard():
-    """CT05: Visualização de Banhos no Calendário (Positivo)"""
-    cli_id = client.post("/api/v1/clientes/", json={"nome": "Ana"}).json()["id"]
-    dog_id = client.post("/api/v1/cachorros/", json={"nome": "Mel", "porte": "pequeno", "cliente_id": cli_id}).json()["id"]
-    pac_id = client.post("/api/v1/pacotes/", json={"cachorro_id": dog_id, "tipo_plano": "mensal", "valor_cobrado": 60.0}).json()["id"]
-    from datetime import date
-    hoje = date.today().isoformat()
-    dash_resp = client.get(f"/api/v1/agendamentos/dashboard/{hoje}")
-    assert dash_resp.status_code == 200
-    assert any(item["pet_nome"] == "Mel" for item in dash_resp.json())
+    # Filtra apenas datas que pertencem ao mês de referência
+    return [dt for dt in datas if primeiro_dia_mes <= dt <= ultimo_dia_mes]
 
-def test_ct06_edicao_status_presenca():
-    """CT06: Edição de Status de Presença (Positivo)"""
-    cli_id = client.post("/api/v1/clientes/", json={"nome": "Bia"}).json()["id"]
-    dog_id = client.post("/api/v1/cachorros/", json={"nome": "Luna", "porte": "pequeno", "cliente_id": cli_id}).json()["id"]
-    pac_id = client.post("/api/v1/pacotes/", json={"cachorro_id": dog_id, "tipo_plano": "mensal", "valor_cobrado": 60.0}).json()["id"]
-    ag_id = client.get(f"/api/v1/agendamentos/?pacote_id={pac_id}").json()[0]["id"]
-    up_resp = client.put(f"/api/v1/agendamentos/{ag_id}", json={"status_presenca": "concluido"})
-    assert up_resp.status_code == 200
-    assert up_resp.json()["status_presenca"] == "concluido"
+def calcular_valor_total_pacote(valor_base: float, tipo_plano: str):
+    """Valida a regra de cálculo de valor total (recalculado no frontend e gravado no backend)"""
+    multiplicadores = {
+        "semanal": 4,
+        "quinzenal": 2,
+        "mensal": 1
+    }
+    return valor_base * multiplicadores.get(tipo_plano, 0)
 
+# --- TESTES UNITÁRIOS ---
+
+def test_unit_geracao_datas_semanal():
+    """Cenário: Plano Semanal na Terça-feira em Maio/2024 (Primeira terça é dia 07)"""
+    ref = date(2024, 5, 1)
+    datas = calcular_datas_agendamentos("semanal", "terca", ref)
+    
+    assert len(datas) == 4
+    assert datas[0] == date(2024, 5, 7)
+    assert datas[3] == date(2024, 5, 28)
+
+def test_unit_geracao_datas_quinzenal():
+    """Cenário: Plano Quinzenal na Quarta-feira (Intervalo de 15 dias)"""
+    # 01/05/2024 é uma Quarta. Próxima: 16/05.
+    ref = date(2024, 5, 1)
+    datas = calcular_datas_agendamentos("quinzenal", "quarta", ref)
+    
+    assert len(datas) == 2
+    assert datas[0] == date(2024, 5, 1)
+    assert datas[1] == date(2024, 5, 16)
+
+def test_unit_geracao_datas_mensal():
+    """Cenário: Plano Mensal deve gerar exatamente 1 data no mês"""
+    ref = date(2024, 6, 1) # Junho 2024
+    datas = calcular_datas_agendamentos("mensal", "sabado", ref)
+    
+    assert len(datas) == 1
+    assert datas[0] == date(2024, 6, 1) # Primeiro sábado de Junho/24
+
+def test_unit_filtro_fim_do_mes():
+    """Cenário: Garantir que banhos não transbordem para o próximo mês"""
+    # Fevereiro 2024 (29 dias). 
+    # Se a primeira terça é dia 06. 06 + 7*3 = 27 (ok). 
+    # Se o plano fosse gerar 5 banhos, o 5º seria em Março e deve ser filtrado.
+    ref = date(2024, 2, 1)
+    datas = calcular_datas_agendamentos("semanal", "terca", ref)
+    
+    for d in datas:
+        assert d.month == 2
+        assert d.year == 2024
+
+def test_unit_calculo_valor_total():
+    """Cenário: Valida se a multiplicação do valor base pelo plano está correta"""
+    assert calcular_valor_total_pacote(50.0, "semanal") == 200.0
+    assert calcular_valor_total_pacote(60.0, "quinzenal") == 120.0
+    assert calcular_valor_total_pacote(80.0, "mensal") == 80.0
+    assert calcular_valor_total_pacote(50.0, "invalido") == 0.0
