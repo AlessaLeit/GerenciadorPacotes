@@ -1,9 +1,11 @@
 <template>
   <div class="login-container">
     <div class="login-card">
+
       <div class="logo">
-        <span class="icon">🐾</span>
-        <h1>Recanto Mini Dogs</h1>
+        <div class="logo-icon">🐾</div>
+        <h1 class="logo-titulo">Recanto Mini Dogs</h1>
+        <p class="logo-sub">Canil · Banho &amp; Tosa</p>
       </div>
 
       <form @submit.prevent="handleSubmit" class="login-form">
@@ -18,13 +20,18 @@
         </div>
 
         <div v-if="error" class="error-message">
-          {{ error }}
+          ⚠️ {{ error }}
         </div>
 
         <button type="submit" class="btn-submit" :disabled="loading">
-          {{ loading ? 'Processando...' : 'Entrar' }}
+          <span v-if="loading" class="btn-loading">⏳ Processando...</span>
+          <span v-else>Entrar</span>
         </button>
       </form>
+
+      <div class="login-footer">
+        Recanto Mini Dogs © {{ new Date().getFullYear() }}
+      </div>
     </div>
   </div>
 </template>
@@ -60,54 +67,169 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
+/* ── VARIÁVEIS ── */
 .login-container {
+  --marrom:        #3b2a1a;
+  --marrom-medio:  #5a3e28;
+  --marrom-claro:  #8b6340;
+  --dourado:       #d4a843;
+  --dourado-claro: #f5e4a8;
+  --dourado-bg:    #fdf6e3;
+  --verde:         #6b8f4e;
+  --creme:         #faf6ef;
+  --creme-escuro:  #f0e8d8;
+  --text:          #2e1e0f;
+  --text-muted:    #7a6251;
+  --white:         #ffffff;
+  --radius:        12px;
+  --shadow:        0 8px 32px rgba(59,42,26,0.18);
+
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f0f2f5;
+
+  /* Fundo com padrão de patinhas sutil */
+  background-color: var(--marrom);
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(212,168,67,0.12) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(107,143,78,0.1) 0%, transparent 50%);
 }
+
+/* ── CARD ── */
 .login-card {
-  background: white;
-  padding: 2.5rem;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  background: var(--white);
+  padding: 2.5rem 2.25rem 1.75rem;
+  border-radius: 18px;
+  box-shadow: var(--shadow);
   width: 100%;
   max-width: 400px;
+  border-top: 6px solid var(--dourado);
 }
+
+/* ── LOGO ── */
 .logo {
   text-align: center;
   margin-bottom: 2rem;
 }
-.logo .icon { font-size: 3rem; }
-.logo h1 { font-size: 1.5rem; color: #2d3748; margin-top: 0.5rem; }
+
+.logo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  background: var(--marrom);
+  border-radius: 50%;
+  font-size: 2rem;
+  margin-bottom: 0.9rem;
+  border: 4px solid var(--dourado);
+  box-shadow: 0 4px 16px rgba(59,42,26,0.25);
+}
+
+.logo-titulo {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--marrom);
+  margin: 0 0 0.25rem;
+  line-height: 1.2;
+}
+
+.logo-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ── FORMULÁRIO ── */
+.login-form { margin-top: 0.5rem; }
 
 .form-group { margin-bottom: 1.25rem; }
+
 .form-group label {
   display: block;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #4a5568;
-  margin-bottom: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--marrom);
+  margin-bottom: 0.4rem;
 }
+
 .form-group input {
   width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
+  padding: 0.7rem 0.9rem;
+  border: 2px solid var(--creme-escuro);
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  color: var(--text);
+  background: var(--creme);
   box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
 }
+
+.form-group input:focus {
+  border-color: var(--dourado);
+  box-shadow: 0 0 0 3px rgba(212,168,67,0.15);
+  background: var(--white);
+}
+
+.form-group input::placeholder { color: #b5a090; }
+
+/* ── ERRO ── */
+.error-message {
+  background: #fdeaea;
+  border: 1px solid #f5c0c0;
+  border-radius: 8px;
+  color: #b94040;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+/* ── BOTÃO ── */
 .btn-submit {
   width: 100%;
-  padding: 0.75rem;
-  background: #4299e1;
-  color: white;
+  padding: 0.8rem;
+  background: var(--marrom);
+  color: var(--dourado);
   border: none;
   border-radius: 8px;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 800;
   cursor: pointer;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
+  letter-spacing: 0.3px;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 3px 10px rgba(59,42,26,0.25);
 }
-.error-message { color: #e53e3e; font-size: 0.875rem; margin-top: 0.5rem; text-align: center; }
+
+.btn-submit:hover:not(:disabled) {
+  background: var(--marrom-medio);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(59,42,26,0.3);
+}
+
+.btn-submit:active:not(:disabled) { transform: translateY(0); }
+
+.btn-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.btn-loading { opacity: 0.85; }
+
+/* ── RODAPÉ ── */
+.login-footer {
+  text-align: center;
+  margin-top: 1.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--creme-escuro);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
 </style>

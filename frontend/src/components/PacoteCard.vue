@@ -1,43 +1,38 @@
 <template>
-  <div class="pacote-card">
-    <div class="pacote-header">
-      <div class="pacote-info">
-        <h3 class="pacote-nome">{{ pacote.cachorro?.nome || 'Pacote' }} - {{ pacote.tipo_plano?.toUpperCase() }}</h3>
-        <p class="pacote-cliente">{{ pacote.cachorro?.cliente?.nome }}</p>
+  <div class="pacote-card" :class="{ inativo: !pacote.ativo }">
+    <div class="card-header">
+      <h3 class="plano-label">{{ tipoPlanoLabel }}</h3>
+      <span class="badge" :class="statusClass">{{ statusPagamento }}</span>
+    </div>
+
+    <div class="card-body">
+      <div class="info-row">
+        <span class="info-label">Valor Cobrado</span>
+        <span class="info-val">R$ {{ formatarValor(pacote.valor_cobrado) }}</span>
       </div>
-      <div class="pacote-status" :class="statusClass">
-        {{ statusLabel }}
+      <div class="info-row">
+        <span class="info-label">Valor Pago</span>
+        <span class="info-val" :class="{ pendente: !pacote.valor_pago }">
+          R$ {{ formatarValor(pacote.valor_pago || 0) }}
+        </span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Limite / Mês</span>
+        <span class="info-val">{{ pacote.limite_banhos_mes }} banhos</span>
+      </div>
+      <div class="info-row" v-if="pacote.data_pagamento">
+        <span class="info-label">Pago em</span>
+        <span class="info-val">{{ formatarData(pacote.data_pagamento) }}</span>
       </div>
     </div>
-    
-    <div class="pacote-body">
-      <div class="pacote-metrics">
-        <div class="metric">
-          <span class="metric-label">Valor:</span>
-          <span class="metric-value">R$ {{ formatarValor(pacote.valor_cobrado) }}</span>
-        </div>
-        <div class="metric" v-if="pacote.valor_pago">
-          <span class="metric-label">Pago:</span>
-          <span class="metric-value">R$ {{ formatarValor(pacote.valor_pago) }}</span>
-        </div>
-        <div class="metric">
-<span class="metric-label">Agendamentos:</span>
-          <span class="metric-value">{{ totalAgendamentos }}/{{ banhosMensais }}</span>
-        </div>
-      </div>
-      
-      <div class="pacote-actions">
-        <button v-if="isAberto" @click="$emit('pagar', pacote)" class="btn btn-warning">
-          💰 Pagar
-        </button>
-        <button @click="$emit('detalhes', pacote)" class="btn btn-secondary">
-          Detalhes
-        </button>
-      </div>
-    </div>
-    
-    <div class="pacote-footer" v-if="pacote.observacoes">
-      <small>{{ pacote.observacoes }}</small>
+
+    <div class="card-actions">
+      <button
+        v-if="pacote.status_pagamento === 'em_aberto'"
+        @click="$emit('pagar', pacote)"
+        class="btn btn-dourado"
+      >💰 Registrar Pagamento</button>
+      <button @click="$emit('detalhes', pacote)" class="btn btn-ghost">Ver Detalhes</button>
     </div>
   </div>
 </template>
@@ -45,166 +40,92 @@
 <script setup>
 import { computed } from 'vue'
 
-const props = defineProps({
-  pacote: {
-    type: Object,
-    required: true
-  }
-})
+const props = defineProps({ pacote: { type: Object, required: true } })
+defineEmits(['pagar', 'detalhes'])
 
-const emit = defineEmits(['pagar', 'detalhes'])
+const tipoPlanoLabel = computed(() => ({
+  semanal: '📅 Semanal (4×/mês)',
+  quinzenal: '📅 Quinzenal (2×/mês)',
+  mensal: '📅 Mensal (1×/mês)'
+}[props.pacote.tipo_plano] || props.pacote.tipo_plano))
 
-const banhosMensais = computed(() => {
-  const map = { semanal: 4, quinzenal: 2, mensal: 1 }
-  return map[props.pacote.tipo_plano] || 0
-})
+const statusPagamento = computed(() => ({
+  em_aberto: 'Em Aberto',
+  pago: 'Pago',
+  parcial: 'Parcial'
+}[props.pacote.status_pagamento] || 'Desconhecido'))
 
-const totalAgendamentos = computed(() => props.pacote.total_agendamentos || props.pacote.agendamentos?.length || 0)
+const statusClass = computed(() => ({
+  'badge-aberto':  props.pacote.status_pagamento === 'em_aberto',
+  'badge-pago':    props.pacote.status_pagamento === 'pago',
+  'badge-parcial': props.pacote.status_pagamento === 'parcial'
+}))
 
-const statusLabel = computed(() => {
-  if (!props.pacote.ativo) return 'Inativo'
-  if (!props.pacote.valor_pago) return '❌ Em Aberto'
-  return '✅ Pago'
-})
-
-const statusClass = computed(() => {
-  if (!props.pacote.ativo) return 'status-inativo'
-  if (!props.pacote.valor_pago) return 'status-aberto'
-  return 'status-pago'
-})
-
-const isAberto = computed(() => props.pacote.status_pagamento === 'em_aberto')
-
-function formatarValor(valor) {
-  return Number(valor || 0).toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })
-}
+function formatarValor(valor) { return Number(valor).toFixed(2).replace('.', ',') }
+function formatarData(data) { return new Date(data).toLocaleDateString('pt-BR') }
 </script>
 
 <style scoped>
 .pacote-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  padding: 1.5rem;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
+  --marrom:        #3b2a1a;
+  --marrom-medio:  #5a3e28;
+  --dourado:       #d4a843;
+  --dourado-claro: #f5e4a8;
+  --verde:         #6b8f4e;
+  --verde-bg:      #eef4e6;
+  --creme:         #faf6ef;
+  --creme-escuro:  #f0e8d8;
+  --text:          #2e1e0f;
+  --text-muted:    #7a6251;
+  --white:         #ffffff;
+  --radius:        10px;
+  --shadow:        0 2px 12px rgba(59,42,26,0.1);
 
-.pacote-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  background: var(--white);
+  border-radius: var(--radius);
+  border: 2px solid var(--creme-escuro);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
+.pacote-card:hover { border-color: var(--dourado); box-shadow: 0 4px 18px rgba(59,42,26,0.14); }
+.pacote-card.inativo { opacity: 0.6; background: var(--creme); }
 
-.pacote-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-  border-bottom: 2px solid #f7fafc;
-  padding-bottom: 1rem;
+.card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1rem 1.2rem 0.8rem;
+  border-bottom: 2px solid var(--creme-escuro);
 }
+.plano-label { font-size: 0.95rem; font-weight: 800; color: var(--marrom); margin: 0; }
 
-.pacote-nome {
-  margin: 0 0 0.25rem 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #2d3748;
+.badge {
+  padding: 3px 10px; border-radius: 5px;
+  font-size: 0.75rem; font-weight: 800;
 }
+.badge-aberto  { background: var(--dourado-claro); color: #6b4c00; }
+.badge-pago    { background: var(--verde-bg); color: var(--verde); }
+.badge-parcial { background: #fef0e0; color: #8b5e00; }
 
-.pacote-cliente {
-  margin: 0;
-  color: #718096;
+.card-body { padding: 0.9rem 1.2rem; }
+.info-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.5rem 0; border-bottom: 1px solid var(--creme-escuro);
   font-size: 0.9rem;
 }
+.info-row:last-child { border-bottom: none; }
+.info-label { color: var(--text-muted); font-weight: 600; }
+.info-val { font-weight: 800; color: var(--marrom); }
+.info-val.pendente { color: #b94040; }
 
-.pacote-status {
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
+.card-actions {
+  display: flex; gap: 0.5rem;
+  padding: 0.9rem 1.2rem;
+  border-top: 2px solid var(--creme-escuro);
+  background: var(--creme);
 }
-
-.status-aberto {
-  background: #fed7d7;
-  color: #c53030;
-}
-
-.status-pago {
-  background: #c6f6d5;
-  color: #22543d;
-}
-
-.status-inativo {
-  background: #e2e8f0;
-  color: #4a5568;
-}
-
-.pacote-metrics {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.metric {
-  display: flex;
-  justify-content: space-between;
-}
-
-.metric-label {
-  color: #718096;
-  font-size: 0.85rem;
-}
-
-.metric-value {
-  font-weight: 600;
-  color: #2d3748;
-}
-
-.pacote-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn {
-  flex: 1;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: #4299e1;
-  color: white;
-}
-
-.btn-warning {
-  background: #ed8936;
-  color: white;
-}
-
-.btn-secondary {
-  background: #a0aec0;
-  color: #2d3748;
-}
-
-.btn:hover {
-  transform: translateY(-1px);
-}
-
-.pacote-footer {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e2e8f0;
-}
-
-.pacote-footer small {
-  color: #a0aec0;
-  font-style: italic;
-}
+.btn { flex: 1; padding: 0.55rem 0.75rem; border: none; border-radius: 7px; font-weight: 700; cursor: pointer; font-size: 0.88rem; transition: all 0.15s; }
+.btn-dourado { background: var(--dourado); color: var(--marrom); }
+.btn-dourado:hover { background: #c49838; }
+.btn-ghost { background: var(--creme-escuro); color: var(--marrom); }
+.btn-ghost:hover { background: var(--dourado-claro); }
 </style>
